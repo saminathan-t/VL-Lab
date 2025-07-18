@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PN Junction Diode VI Characteristics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+    input, select, button { margin: 6px; padding: 8px; font-size: 14px; }
+    canvas { margin-top: 20px; border: 1px solid #ccc; background-color: #f0f0f0; }
+    .output { margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<h2>V-I Characteristics of PN Junction Diode (Si / Ge)</h2>
+
+<!-- Diode and Bias Selection -->
+<label>Diode Type:</label>
+<select id="diodeType" onchange="resetGraph()">
+  <option value="Si">Silicon</option>
+  <option value="Ge">Germanium</option>
+</select>
+
+<label>Bias Mode:</label>
+<select id="biasMode" onchange="resetGraph()">
+  <option value="forward">Forward Bias</option>
+  <option value="reverse">Reverse Bias</option>
+</select>
+
+<br>
+
+<!-- Voltage Input -->
+<label>Enter Voltage (V):</label>
+<input type="number" id="voltage" step="0.1" value="0.0" oninput="autoAddPoint()">
+<button onclick="resetGraph()">Reset</button>
+<button onclick="exportGraph()">Export Graph</button>
+<button onclick="resetZoom()">Reset Zoom</button>
+
+<br><br>
+
+<!-- Axis and Color Controls -->
+<h3>Axis & Style Settings</h3>
+
+<label>X Min:</label>
+<input type="number" id="xMin" value="-10" step="0.1">
+<label>X Max:</label>
+<input type="number" id="xMax" value="10" step="0.1">
+
+<label>Y Min:</label>
+<input type="number" id="yMin" value="-20" step="0.1">
+<label>Y Max:</label>
+<input type="number" id="yMax" value="20" step="0.1">
+
+<br>
+
+<label>Line Color:</label>
+<input type="color" id="lineColor" value="#0000ff" onchange="updateGraphStyle()">
+<label>Background Color:</label>
+<input type="color" id="bgColor" value="#f0f0f0" onchange="updateGraphStyle()">
+
+<button onclick="updateAxisRange()">Update Axis Range</button>
+
+<!-- Chart -->
+<canvas id="viChart" width="650" height="400"></canvas>
+
+<!-- Output -->
+<div class="output" id="output"></div>
+
+<script>
+let chartData = {
+  datasets: [{
+    label: 'V-I Curve',
+    data: [],
+    borderColor: '#0000ff',
+    borderWidth: 2,
+    fill: false,
+    tension: 0.2,
+    pointBackgroundColor: 'red',
+    pointRadius: 4,
+    showLine: true
+  }]
+};
+
+const ctx = document.getElementById("viChart").getContext("2d");
+
+const viChart = new Chart(ctx, {
+  type: "scatter",
+  data: chartData,
+  options: {
+    responsive: false,
+    scales: {
+      x: {
+        type: 'linear',
+        title: { display: true, text: "Voltage (V)" },
+        min: -10,
+        max: 10,
+        ticks: { stepSize: 0.5 },
+        grid: {
+          drawBorder: true,
+          drawTicks: true,
+          color: ctx => ctx.tick.value === 0 ? 'black' : '#ccc',
+          lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
+        }
+      },
+      y: {
+        title: { display: true, text: "Current (mA)" },
+        min: -20,
+        max: 20,
+        ticks: { stepSize: 0.5 },
+        grid: {
+          drawBorder: true,
+          drawTicks: true,
+          color: ctx => ctx.tick.value === 0 ? 'black' : '#ccc',
+          lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1
+        }
+      }
+    },
+    plugins: {
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: 'xy',
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true
+          },
+          mode: 'xy',
+        }
+      }
+    }
+  },
+  plugins: [{
+    id: 'customCanvasBackground',
+    beforeDraw: (chart) => {
+      const ctx = chart.canvas.getContext('2d');
+      ctx.save();
+      ctx.fillStyle = document.getElementById('bgColor').value;
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    }
+  }]
+});
+
+let prevV = 0, prevI = 0;
+
+function autoAddPoint() {
+  const voltage = parseFloat(document.getElementById("voltage").value);
+  const diodeType = document.getElementById("diodeType").value;
+  const biasMode = document.getElementById("biasMode").value;
+
+  if (isNaN(voltage)) return;
+
+  const cutIn = diodeType === "Si" ? 0.7 : 0.3;
+  let current = 0;
+
+  if (biasMode === "forward") {
+    current = voltage < cutIn
+      ? 0.1 * voltage
+      : 5 * (voltage - cutIn);
+  } else {
+    // Reverse bias leakage current, very small
+    current = -0.2; // mA (constant for demonstration)
+  }
+
+  chartData.datasets[0].data.push({ x: voltage, y: current });
+  viChart.update();
+
+  let staticR = voltage / current;
+  let dynamicR = (voltage - prevV) / (current - prevI);
+
+  let output = `
+    <b>Diode:</b> ${diodeType === 'Si' ? 'Silicon' : 'Germanium'} PN Junction<br>
+    <b>Bias:</b> ${biasMode === 'forward' ? 'Forward Bias' : 'Reverse Bias'}<br>
+    <b>Voltage (V):</b> ${voltage.toFixed(2)}<br>
+    <b>Current (mA):</b> ${current.toFixed(2)}<br>
+    <b>Cut-in Voltage:</b> ${cutIn} V<br>
+    <b>Static Resistance:</b> ${isFinite(staticR) ? staticR.toFixed(2) + " Ω" : "∞"}<br>
+  `;
+
+  if (chartData.datasets[0].data.length > 1 && isFinite(dynamicR)) {
+    output += `<b>Dynamic Resistance:</b> ${dynamicR.toFixed(2)} Ω`;
+  }
+
+  document.getElementById("output").innerHTML = output;
+
+  prevV = voltage;
+  prevI = current;
+}
+
+function resetGraph() {
+  chartData.datasets[0].data = [];
+  viChart.update();
+  document.getElementById("output").innerHTML = "";
+  prevV = 0;
+  prevI = 0;
+}
+
+function resetZoom() {
+  viChart.resetZoom();
+}
+
+function exportGraph() {
+  const link = document.createElement('a');
+  link.download = 'pn_junction_vi_graph.png';
+  link.href = document.getElementById('viChart').toDataURL('image/png');
+  link.click();
+}
+
+function updateAxisRange() {
+  const xMin = parseFloat(document.getElementById("xMin").value);
+  const xMax = parseFloat(document.getElementById("xMax").value);
+  const yMin = parseFloat(document.getElementById("yMin").value);
+  const yMax = parseFloat(document.getElementById("yMax").value);
+
+  viChart.options.scales.x.min = xMin;
+  viChart.options.scales.x.max = xMax;
+  viChart.options.scales.y.min = yMin;
+  viChart.options.scales.y.max = yMax;
+
+  viChart.update();
+}
+
+function updateGraphStyle() {
+  const lineColor = document.getElementById("lineColor").value;
+  chartData.datasets[0].borderColor = lineColor;
+  viChart.update();
+}
+</script>
+
+</body>
+</html>

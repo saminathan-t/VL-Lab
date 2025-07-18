@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Diode Clipping Circuits Interactive</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fdf6e3;
+      padding: 20px;
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+    }
+    .controls {
+      width: 95%;
+      margin: 20px auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+    }
+    select, input, button {
+      padding: 5px;
+      font-size: 14px;
+    }
+    canvas {
+      border: 2px solid #555;
+      display: block;
+      margin: 30px auto;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Diode Clipping Circuits Simulation</h2>
+
+<div class="controls">
+  <label>Waveform:
+    <select id="waveformType">
+      <option value="sine">Sine</option>
+      <option value="triangle">Triangle</option>
+      <option value="square">Square</option>
+    </select>
+  </label>
+
+  <label>Clipper:
+    <select id="clipperType">
+      <option value="positive">Positive Clipper</option>
+      <option value="negative">Negative Clipper</option>
+    </select>
+  </label>
+
+  <label>Reference Mode:
+    <select id="refMode">
+      <option value="none">Without Reference</option>
+      <option value="ref">With Reference</option>
+    </select>
+  </label>
+
+  <label>Reference Type:
+    <select id="refPolarity">
+      <option value="positive">+Vref</option>
+      <option value="negative">-Vref</option>
+    </select>
+  </label>
+
+  <label>Vref:
+    <input type="number" id="refVoltage" value="2" step="0.1" />
+  </label>
+
+  <label>Plot BG Color:
+    <select id="bgColor">
+      <option value="#ffffff">White</option>
+      <option value="#f0f8ff">Alice Blue</option>
+      <option value="#fff0f5">Lavender Blush</option>
+      <option value="#ffffe0">Light Yellow</option>
+      <option value="#e0ffe0">Light Green</option>
+    </select>
+  </label>
+
+  <label>Input Line Color:
+    <select id="inputColor">
+      <option value="#0077cc">Blue</option>
+      <option value="#008000">Green</option>
+      <option value="#800080">Purple</option>
+      <option value="#ffa500">Orange</option>
+      <option value="#000000">Black</option>
+    </select>
+  </label>
+
+  <label>Clipped Line Color:
+    <select id="clippedColor">
+      <option value="#cc0000">Red</option>
+      <option value="#ff69b4">Pink</option>
+      <option value="#800000">Maroon</option>
+      <option value="#0000ff">Blue</option>
+      <option value="#8b0000">Dark Red</option>
+    </select>
+  </label>
+
+  <label><input type="checkbox" id="showInput" checked /> Show Input</label>
+  <label><input type="checkbox" id="showClipped" checked /> Show Clipped Output</label>
+
+  <button onclick="updateChart()">Update</button>
+  <button onclick="downloadChart()">Export</button>
+</div>
+
+<canvas id="clipperChart" width="950" height="450"></canvas>
+
+<script>
+  let chart;
+
+  const ctx = document.getElementById("clipperChart").getContext("2d");
+
+  function generateLabels() {
+    const labels = [];
+    for (let t = -Math.PI; t <= 3 * Math.PI; t += 0.1) {
+      labels.push(t.toFixed(2));
+    }
+    return labels;
+  }
+
+  function generateWaveform(type) {
+    const data = [];
+    const labels = generateLabels();
+    for (let i = 0; i < labels.length; i++) {
+      const t = parseFloat(labels[i]);
+      if (type === "sine") {
+        data.push(5 * Math.sin(t));
+      } else if (type === "triangle") {
+        data.push(5 * (2 / Math.PI) * Math.asin(Math.sin(t)));
+      } else if (type === "square") {
+        data.push(5 * Math.sign(Math.sin(t)));
+      }
+    }
+    return data;
+  }
+
+  function applyClipping(input, clipType, refMode, refType, Vref) {
+    return input.map(v => {
+      if (refMode === "none") {
+        if (clipType === "positive") return v > 0 ? 0 : v;
+        if (clipType === "negative") return v < 0 ? 0 : v;
+      } else {
+        if (clipType === "positive" && refType === "positive") return v > Vref ? Vref : v;
+        if (clipType === "negative" && refType === "negative") return v < -Vref ? -Vref : v;
+      }
+      return v;
+    });
+  }
+
+  function updateChart() {
+    const waveformType = document.getElementById("waveformType").value;
+    const clipperType = document.getElementById("clipperType").value;
+    const refMode = document.getElementById("refMode").value;
+    const refPolarity = document.getElementById("refPolarity").value;
+    const Vref = parseFloat(document.getElementById("refVoltage").value);
+    const showInput = document.getElementById("showInput").checked;
+    const showClipped = document.getElementById("showClipped").checked;
+
+    const bgColor = document.getElementById("bgColor").value;
+    const inputColor = document.getElementById("inputColor").value;
+    const clippedColor = document.getElementById("clippedColor").value;
+
+    const labels = generateLabels();
+    const input = generateWaveform(waveformType);
+    const clipped = applyClipping(input, clipperType, refMode, refPolarity, Vref);
+
+    const datasets = [];
+
+    if (showInput) {
+      datasets.push({
+        label: "Input (" + waveformType + ")",
+        data: input,
+        borderColor: inputColor,
+        borderWidth: 2,
+        fill: false,
+      });
+    }
+
+    if (showClipped) {
+      let title = "";
+      if (refMode === "none") {
+        title = clipperType === "positive" ? "Positive Clipper" : "Negative Clipper";
+      } else {
+        title = `${clipperType === "positive" ? "Positive" : "Negative"} Clipper with ${refPolarity === "positive" ? "+" : "-"}Vref`;
+      }
+
+      datasets.push({
+        label: title,
+        data: clipped,
+        borderColor: clippedColor,
+        borderWidth: 2,
+        fill: false,
+      });
+    }
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'nearest',
+          axis: 'xy',
+          intersect: false,
+        },
+        layout: {
+          backgroundColor: bgColor
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Time" },
+            ticks: { color: "#000" }
+          },
+          y: {
+            min: -6,
+            max: 6,
+            title: { display: true, text: "Voltage (V)" },
+            ticks: { color: "#000" }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: "Clipping Circuit Output"
+          },
+          legend: {
+            position: "top"
+          },
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${ctx.formattedValue} V`
+            }
+          },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "xy"
+            },
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: "xy"
+            }
+          }
+        }
+      },
+      plugins: [{
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart) => {
+          const ctx = chart.canvas.getContext('2d');
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, chart.width, chart.height);
+          ctx.restore();
+        }
+      }]
+    });
+  }
+
+  function downloadChart() {
+    const link = document.createElement("a");
+    link.download = "diode_clipping_chart.png";
+    link.href = chart.toBase64Image();
+    link.click();
+  }
+
+  updateChart(); // Load default chart
+</script>
+
+</body>
+</html>

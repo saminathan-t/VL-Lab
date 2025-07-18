@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Virtual Lab</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #e5e7eb);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    nav {
+      width: 100%;
+      background: #add8e6;
+      color: #000;
+      padding: 15px 20px;
+      position: fixed;
+      top: 0;
+      z-index: 1000;
+      overflow-x: auto;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    nav h2 {
+      display: inline-block;
+      font-size: 18px;
+      margin-right: 20px;
+      vertical-align: middle;
+    }
+
+    nav ul {
+      display: inline-block;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      vertical-align: middle;
+    }
+
+    nav li {
+      display: inline-block;
+      padding: 10px 15px;
+      margin: 0 5px;
+      background-color: rgba(255, 255, 255, 0.6);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    nav li:hover {
+      background-color: rgba(255, 255, 255, 0.9);
+      transform: scale(1.05);
+    }
+
+    main {
+      padding: 130px 40px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    #experimentContent {
+      background: #fff7ec;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      text-align: left; /* Changed from center to left */
+    }
+
+    h2 {
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      margin-top: 25px;
+      margin-bottom: 10px;
+      color: #374151;
+    }
+
+    ol, p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    button {
+      background-color: #2563eb;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    @media (max-width: 768px) {
+      nav {
+        padding: 10px;
+      }
+
+      nav li {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+
+      main {
+        padding: 100px 20px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <h2>Experiments:</h2>
+    <ul>
+      <li onclick="loadExperiment(1)">PN Junction Diode</li>
+      <li onclick="loadExperiment(2)">Zener Diode</li>
+      <li onclick="loadExperiment(3)">DC Regulators</li>
+      <li onclick="loadExperiment(4)">Rectifier Circuits</li>
+      <li onclick="loadExperiment(5)">Clipping Circuit</li>
+      <li onclick="loadExperiment(6)">BJT Characteristics</li>
+      <li onclick="loadExperiment(7)">MOSFET</li>
+      <li onclick="loadExperiment(8)">Binary Adders</li>
+      <li onclick="loadExperiment(9)">Encoder</li>
+      <li onclick="loadExperiment(10)">Decoder</li>
+      <li onclick="loadExperiment(11)">MUX & DeMUX</li>
+    </ul>
+  </nav>
+
+  <main>
+    <div id="experimentContent">
+      <h2>Welcome to 21ECC211L Devices and Digital IC Virtual Lab</h2>
+      <p>Please select an experiment from the top menu to view its content.</p>
+    </div>
+ 
+  <div class="instructor-profile">
+    <img src="saminathan.png" alt="Instructor Photo" />
+    <div><strong>Dr. T. Saminathan</strong></div>
+  </div>
+  </main>
+
+  <script>
+    const experimentData = {
+      1: {
+        title: "1. Characteristics Study of PN Junction Diode",
+        aim: `<ol>
+            <li>To study the VI Characteristics of Silicon P-N Junction diode and determine its cut-in voltage, static and dynamic resistances.</li>
+          </ol>`,
+        theory: `<ol>
+          <li>Donor and acceptor impurities form a p-n junction with a depletion region, creating a barrier potential (Vγ).</li>
+          <li>Forward bias reduces the potential barrier, allowing current flow through the junction.</li>
+          <li>Reverse bias increases the barrier and allows only a small reverse saturation current due to thermally generated carriers.</li>
+        </ol>`,
+        simulation: "Plot the PN junction Diode VI Characteristics.",
+        prelab: `<h3>Pre Lab Questions</h3>
+          <ol>
+            <li>What is the need for doping?</li>
+            <li>How is the depletion region formed in the PN junction?</li>
+            <li>What is break down voltage?</li>
+          </ol>`,
+        postlab: `<h3>Post Lab Questions</h3>
+          <ol>
+            <li>List applications of a PN diode.</li>
+            <li>Why is resistance Rs connected in series with the PN diode?</li>
+          </ol>`,
+        result: `<h3>Result</h3><p>Write your observation based on the output and analysis.</p>`,
+        quiz: `<h3>Quiz</h3><p><strong>Q:</strong> What is a PN junction diode primarily used for?<br><strong>A:</strong> Rectification</p>`,
+        simulationFile: "1. PN junction.html"
+      },
+      2: {
+        title: "2. Characteristics Study of Zener Diode",
+        aim: "To study the VI Characteristics of Zener diode and measure the Zener breakdown voltage.",
+        theory: `<ol>
+          <li>Unlike a standard PN diode, a Zener diode conducts in reverse when the applied voltage exceeds the breakdown voltage.</li>
+          <li>Avalanche breakdown occurs in lightly doped diodes, while heavily doped Zener diodes undergo Zener breakdown.</li>
+        </ol>`,
+        simulation: "Plot the Zener Diode VI Characteristics.",
+        prelab: `<h3>Pre Lab Questions</h3>
+          <ol>
+            <li>Explain the concept of Zener breakdown?</li>
+            <li>How does increased doping thin the depletion region in a Zener diode?</li>
+          </ol>`,
+        postlab: `<h3>Post Lab Questions</h3>
+          <ol>
+            <li>What happens when voltage is below Zener voltage?</li>
+            <li>How to differentiate Zener and Avalanche diodes using voltage rating?</li>
+          </ol>`,
+        result: `<h3>Result</h3><p>Write your observation based on the output and analysis.</p>`,
+        quiz: `<h3>Quiz</h3><p><strong>Q:</strong> What is the main application of a Zener diode?<br><strong>A:</strong> Voltage regulation</p>`,
+        simulationFile: "2. zener diode.html"
+      },
+      3: {
+  title: "3. Characteristics Study of DC Regulators",
+  aim: "To study the regulation characteristics of a DC voltage regulator and calculate the line and load regulation.",
+  theory: `<ol>
+    <li>Voltage regulators maintain a constant output voltage regardless of variations in input voltage or load current.</li>
+    <li>Types include linear regulators (e.g., 7805) and switching regulators.</li>
+    <li>Line regulation shows output response to changes in input voltage; load regulation measures response to load changes.</li>
+  </ol>`,
+  simulation: "Observe output voltage variation with different loads and inputs.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>What is the purpose of a voltage regulator?</li>
+    <li>Difference between line regulation and load regulation?</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>Why is heat sinking important in linear regulators?</li>
+    <li>Explain why switching regulators are more efficient.</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Regulation parameters were measured and regulator behavior observed.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> What IC provides +5V regulated output?<br><strong>A:</strong> 7805</p>`,
+  simulationFile: "3. Regulator.html"
+},
+4: {
+  title: "4. Characteristics Study of Rectifier Circuits",
+  aim: "To study the output waveform of half-wave, full-wave, and bridge rectifiers.",
+  theory: `<ol>
+    <li>Rectifiers convert AC to DC. Types: half-wave, full-wave (center tap), and bridge.</li>
+    <li>Filtering is used to smooth the pulsating DC.</li>
+    <li>Key parameters: ripple factor, efficiency, and peak inverse voltage (PIV).</li>
+  </ol>`,
+  simulation: "Plot and compare the waveforms of different rectifiers with and without filters.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>What is PIV in rectifiers?</li>
+    <li>Define ripple factor.</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>Compare the efficiencies of half-wave and full-wave rectifiers.</li>
+    <li>Why are filters used after rectifiers?</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Rectifier outputs and their ripple content were studied and compared.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> Which rectifier offers the least ripple without filter?<br><strong>A:</strong> Full-wave rectifier</p>`,
+  simulationFile: "4. rectifier circuit.html"
+},
+5: {
+  title: "5. Study of Clipping Circuits",
+  aim: "To study positive, negative, and biased clipping circuits using diodes.",
+  theory: `<ol>
+    <li>Clipping circuits remove part of the input signal without distorting the remaining part.</li>
+    <li>Types include series and shunt clippers.</li>
+    <li>Biased clippers introduce a reference voltage to control the clipping level.</li>
+  </ol>`,
+  simulation: "Visualize the input and clipped output waveforms for various clippers.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Difference between clipping and clamping?</li>
+    <li>How does a diode affect the waveform in a clipper?</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>Explain why biased clipping is needed in some cases.</li>
+    <li>What happens if the diode is reversed?</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>The waveforms for various clipping circuits were observed and analyzed.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> What component is essential for clipping?<br><strong>A:</strong> Diode</p>`,
+  simulationFile: "5. clipper.html"
+},
+6: {
+  title: "6. Characteristics of BJT in CE Configuration",
+  aim: "To plot input and output characteristics of a BJT in common emitter mode.",
+  theory: `<ol>
+    <li>Bipolar Junction Transistors have three terminals: emitter, base, and collector.</li>
+    <li>In CE configuration, the input is between base-emitter and output is between collector-emitter.</li>
+    <li>Key parameters: current gain (β), input and output resistance.</li>
+  </ol>`,
+  simulation: "Plot input (Ib vs Vbe) and output (Ic vs Vce) characteristics.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>What is current gain (β)?</li>
+    <li>Explain the active, cutoff, and saturation regions of a BJT.</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>Why is CE configuration commonly used?</li>
+    <li>Define input and output resistance of BJT.</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Input and output curves of BJT in CE mode were obtained and β calculated.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> In CE configuration, what is the phase relation between input and output?<br><strong>A:</strong> 180° phase shift</p>`,
+  simulationFile: "6. bjt.html"
+},
+7: {
+  title: "7. Characteristics of MOSFET",
+  aim: "To plot the transfer and output characteristics of an n-channel enhancement MOSFET.",
+  theory: `<ol>
+    <li>MOSFETs are voltage-controlled devices with high input impedance.</li>
+    <li>Enhancement-mode MOSFET requires Vgs > Vth to turn on.</li>
+    <li>Regions: cutoff, triode, and saturation based on Vds and Vgs.</li>
+  </ol>`,
+  simulation: "Plot Id vs Vds for various Vgs values and transfer characteristic Id vs Vgs.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Difference between depletion and enhancement MOSFET?</li>
+    <li>What is threshold voltage?</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>Why is MOSFET preferred in digital ICs?</li>
+    <li>Explain saturation region of MOSFET.</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Transfer and output characteristics of MOSFET were plotted and analyzed.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> Which terminal controls the MOSFET?<br><strong>A:</strong> Gate</p>`,
+  simulationFile: "7. Mosfet.html"
+},
+8: {
+  title: "8. Study of Half Adder and Full Adder",
+  aim: "To design and simulate half adder and full adder circuits.",
+  theory: `<ol>
+    <li>Half adder adds two binary digits, giving Sum and Carry.</li>
+    <li>Full adder adds three bits: A, B, and Carry-in.</li>
+    <li>Implemented using logic gates (AND, XOR, OR).</li>
+  </ol>`,
+  simulation: "Simulate logic diagram for half and full adder circuits.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Why can't half adder add three bits?</li>
+    <li>Give Boolean expression for full adder sum.</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>How to cascade full adders to form a binary adder?</li>
+    <li>What is the drawback of a ripple carry adder?</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Adder circuits were implemented and outputs verified.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> Which gate is used in a half adder?<br><strong>A:</strong> XOR and AND</p>`,
+  simulationFile: "8. binary adder.html"
+},
+8: {
+  title: "8. Study of Half Adder and Full Adder",
+  aim: "To design and simulate half adder and full adder circuits.",
+  theory: `<ol>
+    <li>Half adder adds two binary digits, giving Sum and Carry.</li>
+    <li>Full adder adds three bits: A, B, and Carry-in.</li>
+    <li>Implemented using logic gates (AND, XOR, OR).</li>
+  </ol>`,
+  simulation: "Simulate logic diagram for half and full adder circuits.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Why can't half adder add three bits?</li>
+    <li>Give Boolean expression for full adder sum.</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>How to cascade full adders to form a binary adder?</li>
+    <li>What is the drawback of a ripple carry adder?</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Adder circuits were implemented and outputs verified.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> Which gate is used in a half adder?<br><strong>A:</strong> XOR and AND</p>`,
+  simulationFile: "8. ADDER.html"
+},
+9: {
+  title: "9. Study of 8-to-3 Encoder",
+  aim: "To design and simulate a digital 8-to-3 encoder circuit.",
+  theory: `<ol>
+    <li>Encoders convert 2ⁿ input lines into n-bit binary output.</li>
+    <li>Only one input should be active at a time.</li>
+  </ol>`,
+  simulation: "Observe the 3-bit output for each input line activation.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Define encoder with an example.</li>
+    <li>Why is priority logic needed in encoders?</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>What happens if multiple inputs are active?</li>
+    <li>Explain the use of priority encoder.</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Encoder logic and output verified through simulation.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> 8-to-3 encoder has how many outputs?<br><strong>A:</strong> 3</p>`,
+  simulationFile: "9. encoder.html"
+},
+10: {
+  title: "10. Study of 3-to-8 Decoder",
+  aim: "To design and simulate a 3-to-8 decoder circuit.",
+  theory: `<ol>
+    <li>Decoders convert binary input into one of many output lines.</li>
+    <li>Each output corresponds to a unique input code.</li>
+  </ol>`,
+  simulation: "View how each 3-bit input activates a specific output line.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>Define decoder with example.</li>
+    <li>How many outputs are there in a 3-to-8 decoder?</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>What is the use of enable input?</li>
+    <li>Compare decoder with demultiplexer.</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Decoder behavior was studied and output lines observed.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> How many outputs does a 3-to-8 decoder have?<br><strong>A:</strong> 8</p>`,
+  simulationFile: "10. decoder.html"
+},
+11: {
+  title: "11. Study of Multiplexer and Demultiplexer",
+  aim: "To design and simulate a 4:1 multiplexer and 1:4 demultiplexer.",
+  theory: `<ol>
+    <li>Multiplexer selects one of many inputs to pass to the output.</li>
+    <li>Demultiplexer routes a single input to one of many outputs.</li>
+  </ol>`,
+  simulation: "Observe the control of signal routing using MUX and DEMUX.",
+  prelab: `<h3>Pre Lab Questions</h3><ol>
+    <li>What is the role of select lines in MUX?</li>
+    <li>Explain the truth table of 4:1 MUX.</li>
+  </ol>`,
+  postlab: `<h3>Post Lab Questions</h3><ol>
+    <li>What is the advantage of using MUX in digital circuits?</li>
+    <li>How does DEMUX differ from a decoder?</li>
+  </ol>`,
+  result: `<h3>Result</h3><p>Multiplexing and demultiplexing logic was verified using simulation.</p>`,
+  quiz: `<h3>Quiz</h3><p><strong>Q:</strong> 4:1 MUX needs how many select lines?<br><strong>A:</strong> 2</p>`,
+  simulationFile: "11. mux demux.html"
+}
+
+};
+    
+
+    function loadExperiment(id) {
+      const exp = experimentData[id];
+      const container = document.getElementById('experimentContent');
+      container.innerHTML = `
+        <h2>${exp.title}</h2>
+        <h3>Aim</h3>
+        ${exp.aim}
+        <h3>Theory</h3>
+        ${exp.theory}
+        <h3>Simulation</h3>
+        <p>${exp.simulation}</p>
+        <button onclick="window.open('${exp.simulationFile}', '_blank')">Open Simulation</button>
+        ${exp.prelab || ""}
+        ${exp.postlab || ""}
+        ${exp.result || ""}
+        ${exp.quiz || ""}
+      `;
+    }
+  </script>
+
+</body>
+</html>

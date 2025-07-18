@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MOSFET Characteristics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f8ff;
+      padding: 20px;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: bold;
+    }
+    input, select {
+      padding: 5px;
+    }
+    canvas {
+      margin-top: 20px;
+      max-width: 900px;
+      background: #fff;
+      border: 1px solid #ccc;
+    }
+    .zoom-buttons button, .export-btn {
+      margin: 5px;
+      padding: 6px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .export-btn {
+      background-color: #28a745;
+    }
+  </style>
+</head>
+<body>
+
+<h2>MOSFET Characteristics (Transfer & Drain)</h2>
+
+<div class="controls">
+  <label>Mode:
+    <select id="mode">
+      <option value="transfer">Transfer</option>
+      <option value="drain">Drain</option>
+    </select>
+  </label>
+
+  <div id="transferControls">
+    <label>V<sub>DS</sub> (V):
+      <input type="text" id="vdsTransfer" value="2,5,8">
+    </label>
+    <label>V<sub>GS</sub> Max (V):
+      <input type="number" id="vgsMax" value="6" step="0.1">
+    </label>
+  </div>
+
+  <div id="drainControls" style="display:none;">
+    <label>V<sub>GS</sub> (V):
+      <input type="text" id="vgsList" value="2,3,4,5">
+    </label>
+    <label>V<sub>DS</sub> Max (V):
+      <input type="number" id="vdsMax" value="10" step="0.1">
+    </label>
+  </div>
+
+  <label>V<sub>TH</sub> (V):
+    <input type="number" id="vth" value="1" step="0.1">
+  </label>
+  <label>k (mA/V²):
+    <input type="number" id="k" value="1" step="0.1">
+  </label>
+</div>
+
+<canvas id="mosfetChart" height="350"></canvas>
+
+<div class="zoom-buttons">
+  <button onclick="resetZoom()">Reset Zoom</button>
+  <button onclick="zoomIn()">Zoom In</button>
+  <button onclick="zoomOut()">Zoom Out</button>
+</div>
+
+<button class="export-btn" onclick="exportGraph()">Export Graph</button>
+
+<script>
+  let chart;
+
+  function getColor(index, total) {
+    const hue = (index * 360 / total) % 360;
+    return `hsl(${hue}, 70%, 45%)`;
+  }
+
+  function plot() {
+    const mode = document.getElementById("mode").value;
+    const Vth = parseFloat(document.getElementById("vth").value);
+    const k = parseFloat(document.getElementById("k").value);
+    const datasets = [];
+
+    if (chart) chart.destroy();
+
+    if (mode === "transfer") {
+      const vdsList = document.getElementById("vdsTransfer").value.split(',').map(v => parseFloat(v.trim()));
+      const VgsMax = parseFloat(document.getElementById("vgsMax").value);
+      const VgsAxis = [];
+      for (let v = 0; v <= VgsMax; v += 0.1) VgsAxis.push(+v.toFixed(2));
+
+      vdsList.forEach((Vds, index) => {
+        const data = VgsAxis.map(Vgs => Vgs > Vth ? +(k * Math.pow(Vgs - Vth, 2)).toFixed(2) : 0);
+        datasets.push({
+          label: `Vᴅs = ${Vds} V`,
+          data: data,
+          borderColor: getColor(index, vdsList.length),
+          fill: false,
+          pointRadius: 0,
+        });
+      });
+
+      createChart(VgsAxis, datasets, "Vᴳs (V)", "Iᴅ (mA)", "Transfer Characteristics");
+
+    } else {
+      const vgsList = document.getElementById("vgsList").value.split(',').map(v => parseFloat(v.trim()));
+      const VdsMax = parseFloat(document.getElementById("vdsMax").value);
+      const VdsAxis = [];
+      for (let v = 0; v <= VdsMax; v += 0.1) VdsAxis.push(+v.toFixed(2));
+
+      vgsList.forEach((Vgs, index) => {
+        const IdAxis = VdsAxis.map(Vds => {
+          if (Vgs <= Vth) return 0;
+          const Vov = Vgs - Vth;
+          return Vds < Vov
+            ? +(2 * k * Vov * Vds - k * Vds * Vds).toFixed(2)
+            : +(k * Vov * Vov).toFixed(2);
+        });
+        datasets.push({
+          label: `Vᴳs = ${Vgs} V`,
+          data: IdAxis,
+          borderColor: getColor(index, vgsList.length),
+          fill: false,
+          pointRadius: 0,
+        });
+      });
+
+      createChart(VdsAxis, datasets, "Vᴅs (V)", "Iᴅ (mA)", "Drain Characteristics");
+    }
+  }
+
+  function createChart(labels, datasets, xLabel, yLabel, titleText) {
+    const ctx = document.getElementById("mosfetChart").getContext("2d");
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          title: { display: true, text: titleText },
+          legend: { display: true },
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'xy'
+            },
+            pan: {
+              enabled: true,
+              mode: 'xy'
+            }
+          }
+        },
+        scales: {
+          x: { title: { display: true, text: xLabel } },
+          y: { beginAtZero: true, title: { display: true, text: yLabel } }
+        }
+      }
+    });
+  }
+
+  function resetZoom() {
+    if (chart) chart.resetZoom();
+  }
+
+  function zoomIn() {
+    if (chart) chart.zoom(1.2);
+  }
+
+  function zoomOut() {
+    if (chart) chart.zoom(0.8);
+  }
+
+  function exportGraph() {
+    const canvas = document.getElementById("mosfetChart");
+    const link = document.createElement("a");
+    link.download = "mosfet_characteristics.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  }
+
+  document.getElementById("mode").addEventListener("change", () => {
+    document.getElementById("transferControls").style.display =
+      document.getElementById("mode").value === "transfer" ? "flex" : "none";
+    document.getElementById("drainControls").style.display =
+      document.getElementById("mode").value === "drain" ? "flex" : "none";
+    plot();
+  });
+
+  document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", plot);
+  });
+
+  window.onload = plot;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BJT CE Characteristics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body {
+      font-family: Arial;
+      background: #e6f2ff;
+      padding: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: bold;
+    }
+    input, select, button {
+      padding: 6px;
+      font-size: 14px;
+    }
+    canvas {
+      background-color: #fff;
+      border: 2px solid #888;
+      margin: 20px auto;
+      display: block;
+      max-width: 900px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    }
+    #hParams {
+      text-align: center;
+      margin-top: 30px;
+    }
+    button.export {
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+    .zoom-buttons {
+      text-align: center;
+      margin-top: 10px;
+    }
+    .zoom-buttons button {
+      margin: 5px;
+      padding: 6px 10px;
+      font-size: 14px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>BJT Common Emitter Characteristics</h2>
+
+<div class="controls">
+  <label>Mode:
+    <select id="mode">
+      <option value="input">Input Characteristics</option>
+      <option value="output">Output Characteristics</option>
+    </select>
+  </label>
+
+  <div id="inputFields">
+    <label>V<sub>CE</sub> values (comma-separated):
+      <input type="text" id="vceList" value="2,5,10,15">
+    </label>
+    <label>V<sub>BE</sub> Max (V):
+      <input type="number" id="vbeMax" value="0.9" step="0.01">
+    </label>
+    <label>Step (V):
+      <input type="number" id="vbeStep" value="0.02" step="0.01">
+    </label>
+  </div>
+
+  <div id="outputFields" style="display: none;">
+    <label>I<sub>B</sub> values (µA, comma-separated):
+      <input type="text" id="ibList" value="10,20,30,40">
+    </label>
+    <label>V<sub>CE</sub> Max (V):
+      <input type="number" id="vceMax" value="10" step="0.1">
+    </label>
+    <label>Step (V):
+      <input type="number" id="vceStep" value="0.2" step="0.1">
+    </label>
+  </div>
+
+  <button class="export" onclick="exportGraph()">Export</button>
+</div>
+
+<canvas id="chart" height="300" style="display:none;"></canvas>
+
+<div class="zoom-buttons">
+  <button onclick="resetZoom()">Reset Zoom</button>
+  <button onclick="zoomIn()">Zoom In</button>
+  <button onclick="zoomOut()">Zoom Out</button>
+</div>
+
+<div id="hParams" style="display: none;">
+  <h3>Estimated h-Parameters</h3>
+  <p id="paramResult"></p>
+</div>
+
+<script>
+  let chart;
+
+  function toggleMode() {
+    const mode = document.getElementById("mode").value;
+    document.getElementById("inputFields").style.display = mode === "input" ? "inline-block" : "none";
+    document.getElementById("outputFields").style.display = mode === "output" ? "inline-block" : "none";
+    plot();
+  }
+
+  function plot() {
+    const mode = document.getElementById("mode").value;
+    if (chart) chart.destroy();
+
+    const datasets = [];
+
+    if (mode === "input") {
+      const vceList = document.getElementById("vceList").value.split(',').map(v => parseFloat(v.trim()));
+      const vbeMax = parseFloat(document.getElementById("vbeMax").value);
+      const vbeStep = parseFloat(document.getElementById("vbeStep").value);
+
+      const vbeAxis = [];
+      for (let vbe = 0; vbe <= vbeMax; vbe += vbeStep) {
+        vbeAxis.push(parseFloat(vbe.toFixed(2)));
+      }
+
+      vceList.forEach((vce, index) => {
+        const ibValues = vbeAxis.map(vbe => {
+          if (vbe >= 0.6) {
+            const baseIb = ((vbe - 0.6) / 800) * 1e6;
+            return baseIb * (1 + vce / 100);
+          } else {
+            return 0;
+          }
+        });
+
+        datasets.push({
+          label: `Vᴄᴇ = ${vce} V`,
+          data: ibValues,
+          borderColor: `hsl(${index * 60}, 80%, 50%)`,
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        });
+      });
+
+      chart = new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+          labels: vbeAxis,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Input Characteristics (Iᴮ vs Vᴮᴱ)"
+            },
+            zoom: {
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'xy',
+              },
+              pan: {
+                enabled: true,
+                mode: 'xy',
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: "Vᴮᴱ (V)" }},
+            y: { title: { display: true, text: "Iᴮ (µA)" }}
+          }
+        }
+      });
+
+      document.getElementById("paramResult").innerText = "hᵢₑ ≈ 800 Ω (ΔV/ΔI from 0.6V onward)";
+    } else {
+      const ibList = document.getElementById("ibList").value.split(',').map(v => parseFloat(v.trim()));
+      const vceMax = parseFloat(document.getElementById("vceMax").value);
+      const vceStep = parseFloat(document.getElementById("vceStep").value);
+
+      const vceAxis = [];
+      for (let vce = 0; vce <= vceMax; vce += vceStep) {
+        vceAxis.push(parseFloat(vce.toFixed(2)));
+      }
+
+      ibList.forEach((ib, index) => {
+        const icValues = vceAxis.map(vce => {
+          if (vce < 0.2) return 0;
+          else if (vce < 0.5) return (ib * 1e-6 * 100 * (vce - 0.2) / 0.3) * 1e3;
+          else return (ib * 1e-6 * 100) * 1e3;
+        });
+
+        datasets.push({
+          label: `Iᴮ = ${ib} µA`,
+          data: icValues,
+          borderColor: `hsl(${index * 60}, 80%, 40%)`,
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        });
+      });
+
+      chart = new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+          labels: vceAxis,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Output Characteristics (I꜀ vs V꜀ᴇ)"
+            },
+            zoom: {
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'xy',
+              },
+              pan: {
+                enabled: true,
+                mode: 'xy',
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: "V꜀ᴇ (V)" }},
+            y: { title: { display: true, text: "I꜀ (mA)" }}
+          }
+        }
+      });
+
+      document.getElementById("paramResult").innerText = "hᶠₑ ≈ 100 (assumed constant β)";
+    }
+
+    document.getElementById("chart").style.display = "block";
+    document.getElementById("hParams").style.display = "block";
+  }
+
+  function resetZoom() {
+    if (chart) chart.resetZoom();
+  }
+
+  function zoomIn() {
+    if (chart) chart.zoom(1.2);
+  }
+
+  function zoomOut() {
+    if (chart) chart.zoom(0.8);
+  }
+
+  function exportGraph() {
+    const canvas = document.getElementById("chart");
+    const link = document.createElement("a");
+    link.download = "bjt_ce_characteristics.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  }
+
+  window.onload = () => {
+    toggleMode();
+    document.querySelectorAll("input, select").forEach(elem => {
+      elem.addEventListener("input", plot);
+    });
+    document.getElementById("mode").addEventListener("change", toggleMode);
+  };
+</script>
+
+</body>
+</html>

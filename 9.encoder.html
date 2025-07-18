@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>8:3 Encoder</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f8ff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1, h2 {
+      color: #004080;
+    }
+
+    .container {
+      display: inline-block;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+    }
+
+    button.active {
+      background-color: #28a745;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    td {
+      background-color: #e8f4ff;
+    }
+
+    .highlight {
+      background-color: #d4edda !important;
+      font-weight: bold;
+    }
+
+    .output {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+
+    canvas {
+      margin: 20px auto;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      display: block;
+    }
+
+    #log {
+      text-align: left;
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff5e6;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 0.95em;
+      height: 150px;
+      overflow-y: auto;
+    }
+
+    .expression {
+      font-size: 1em;
+      font-weight: bold;
+      color: #333;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>8:3 Encoder</h1>
+
+  <div class="container">
+    <p>Select One Active Input (Active High):</p>
+    <div id="inputButtons"></div>
+    <div class="output">
+      <p>Encoded Output: <strong>D2 D1 D0</strong> = <span id="encodedOutput">000</span></p>
+    </div>
+    <div class="expression">
+      <p>Logic Expressions:</p>
+      <p><strong>D2</strong> = I4 + I5 + I6 + I7</p>
+      <p><strong>D1</strong> = I2 + I3 + I6 + I7</p>
+      <p><strong>D0</strong> = I1 + I3 + I5 + I7</p>
+    </div>
+    <table id="truthTable"></table>
+  </div>
+
+  <h2>Waveform (History)</h2>
+  <canvas id="waveformCanvas" width="900" height="300"></canvas>
+  <button onclick="exportCanvas()">Export Waveform</button>
+
+  <h2>Previous Combinations</h2>
+  <div id="log"></div>
+
+  <script>
+    const buttonsDiv = document.getElementById("inputButtons");
+    const encodedOutput = document.getElementById("encodedOutput");
+    const table = document.getElementById("truthTable");
+    const canvas = document.getElementById("waveformCanvas");
+    const ctx = canvas.getContext("2d");
+    const logDiv = document.getElementById("log");
+
+    let inputs = Array(8).fill(0);
+    let history = [];
+
+    // Create input buttons I0 - I7
+    for (let i = 7; i >= 0; i--) {
+      const btn = document.createElement("button");
+      btn.textContent = "I" + i;
+      btn.id = "btn" + i;
+      btn.onclick = () => selectInput(i);
+      buttonsDiv.appendChild(btn);
+    }
+
+    function selectInput(index) {
+      inputs.fill(0);
+      inputs[index] = 1;
+      updateButtonStates();
+      updateOutput();
+    }
+
+    function updateButtonStates() {
+      for (let i = 0; i < 8; i++) {
+        const btn = document.getElementById("btn" + i);
+        btn.classList.toggle("active", inputs[i] === 1);
+      }
+    }
+
+    function getEncodedBinary() {
+      for (let i = 7; i >= 0; i--) {
+        if (inputs[i] === 1) {
+          return i.toString(2).padStart(3, '0');
+        }
+      }
+      return "000";
+    }
+
+    function updateOutput() {
+      const encoded = getEncodedBinary();
+      encodedOutput.textContent = encoded;
+      highlightRow(encoded);
+      logActivity(encoded);
+      drawWaveforms(encoded);
+      history.push([...inputs]);
+    }
+
+    function generateTable() {
+      let html = "<tr><th>I7</th><th>I6</th><th>I5</th><th>I4</th><th>I3</th><th>I2</th><th>I1</th><th>I0</th><th>D2 D1 D0</th></tr>";
+      for (let i = 7; i >= 0; i--) {
+        const row = Array(8).fill(0);
+        row[i] = 1;
+        const code = i.toString(2).padStart(3, '0');
+        html += `<tr><td>${row[7]}</td><td>${row[6]}</td><td>${row[5]}</td><td>${row[4]}</td><td>${row[3]}</td><td>${row[2]}</td><td>${row[1]}</td><td>${row[0]}</td><td>${code}</td></tr>`;
+      }
+      table.innerHTML = html;
+    }
+
+    function highlightRow(encoded) {
+      for (let i = 1; i < table.rows.length; i++) {
+        const row = table.rows[i];
+        row.classList.remove("highlight");
+        if (row.cells[8].textContent === encoded) {
+          row.classList.add("highlight");
+        }
+      }
+    }
+
+    function logActivity(encoded) {
+      const activeIndex = inputs.findIndex(val => val === 1);
+      const inputString = inputs.map((val, i) => `I${i}=${val}`).join(" ");
+      const logEntry = `${inputString} → D2 D1 D0 = ${encoded}`;
+      const logLine = document.createElement("div");
+      logLine.textContent = logEntry;
+      logDiv.appendChild(logLine);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function drawWaveforms(encoded) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const signals = ["I7", "I6", "I5", "I4", "I3", "I2", "I1", "I0", "D2", "D1", "D0"];
+      const colors = ["#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4", "#46f0f0", "#f032e6", "#000", "#000", "#000"];
+      const h = 22, w = 25, leftPad = 60;
+
+      signals.forEach((sig, i) => {
+        const yBase = i * h + 40;
+        ctx.beginPath();
+        ctx.strokeStyle = colors[i];
+        ctx.lineWidth = 2;
+        let x = leftPad;
+
+        let prevVal = (i < 8) ? history[0]?.[7 - i] || 0 : parseInt(encoded[2 - (i - 8)] || "0");
+        ctx.moveTo(x, yBase + (prevVal ? 0 : 10));
+
+        for (let t = 0; t < history.length; t++) {
+          const val = (i < 8)
+            ? history[t][7 - i]
+            : parseInt(getEncodedBinaryFromInputs(history[t])[2 - (i - 8)] || "0");
+          const y = yBase + (val ? 0 : 10);
+
+          if (val !== prevVal) {
+            ctx.lineTo(x, yBase + (prevVal ? 0 : 10));
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(x + w, y);
+          prevVal = val;
+          x += w;
+        }
+
+        ctx.stroke();
+        ctx.fillStyle = "#000";
+        ctx.fillText(sig, 5, yBase + 10);
+      });
+    }
+
+    function getEncodedBinaryFromInputs(inputArray) {
+      for (let i = 7; i >= 0; i--) {
+        if (inputArray[i] === 1) {
+          return i.toString(2).padStart(3, '0');
+        }
+      }
+      return "000";
+    }
+
+    function exportCanvas() {
+      const link = document.createElement("a");
+      link.download = "8to3encoder_waveform.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+
+    // Initialize
+    generateTable();
+  </script>
+</body>
+</html>

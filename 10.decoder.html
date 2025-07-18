@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3:8 Decoder</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f8ff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1, h2 {
+      color: #004080;
+    }
+
+    .container {
+      display: inline-block;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+    }
+
+    button.active {
+      background-color: #28a745;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    td {
+      background-color: #e8f4ff;
+    }
+
+    .highlight {
+      background-color: #d4edda !important;
+      font-weight: bold;
+    }
+
+    .output {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+
+    canvas {
+      margin: 20px auto;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      display: block;
+    }
+
+    #log {
+      text-align: left;
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff5e6;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 0.95em;
+      height: 150px;
+      overflow-y: auto;
+    }
+
+    .expression {
+      font-size: 1em;
+      font-weight: bold;
+      color: #333;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>3:8 Decoder</h1>
+
+  <div class="container">
+    <p>Select Input Combination (D2 D1 D0):</p>
+    <div>
+      <button onclick="setInput(2)">D2</button>
+      <button onclick="setInput(1)">D1</button>
+      <button onclick="setInput(0)">D0</button>
+    </div>
+    <div class="output">
+      <p>Decoder Output: <strong>I7 I6 I5 I4 I3 I2 I1 I0</strong> = <span id="decoderOutput">00000000</span></p>
+    </div>
+    <div class="expression">
+      <p>Logic Expressions (I<sub>n</sub> = D2 D1 D0 decoding):</p>
+      <p>I0 = D̅2·D̅1·D̅0, I1 = D̅2·D̅1·D0, ..., I7 = D2·D1·D0</p>
+    </div>
+    <table id="truthTable"></table>
+  </div>
+
+  <h2>Waveform (History)</h2>
+  <canvas id="waveformCanvas" width="900" height="300"></canvas>
+  <button onclick="exportCanvas()">Export Waveform</button>
+
+  <h2>Previous Combinations</h2>
+  <div id="log"></div>
+
+  <script>
+    const decoderOutput = document.getElementById("decoderOutput");
+    const table = document.getElementById("truthTable");
+    const canvas = document.getElementById("waveformCanvas");
+    const ctx = canvas.getContext("2d");
+    const logDiv = document.getElementById("log");
+
+    let inputs = [0, 0, 0]; // D2, D1, D0
+    let history = [];
+
+    function setInput(bit) {
+      inputs[bit] = inputs[bit] === 0 ? 1 : 0;
+      updateOutput();
+    }
+
+    function getDecoderOutput() {
+      const index = parseInt(inputs.join(""), 2);
+      const outputs = Array(8).fill(0);
+      outputs[index] = 1;
+      return outputs;
+    }
+
+    function updateOutput() {
+      const out = getDecoderOutput();
+      decoderOutput.textContent = out.join("");
+      highlightRow(inputs.join(""));
+      logActivity(out);
+      drawWaveforms(out);
+      history.push([...inputs]);
+    }
+
+    function generateTable() {
+      let html = "<tr><th>D2</th><th>D1</th><th>D0</th><th>I7 I6 I5 I4 I3 I2 I1 I0</th></tr>";
+      for (let i = 0; i < 8; i++) {
+        const bin = i.toString(2).padStart(3, '0');
+        const out = Array(8).fill(0);
+        out[i] = 1;
+        html += `<tr><td>${bin[0]}</td><td>${bin[1]}</td><td>${bin[2]}</td><td>${out.join('')}</td></tr>`;
+      }
+      table.innerHTML = html;
+    }
+
+    function highlightRow(inputStr) {
+      for (let i = 1; i < table.rows.length; i++) {
+        const row = table.rows[i];
+        const rowInput = row.cells[0].textContent + row.cells[1].textContent + row.cells[2].textContent;
+        row.classList.toggle("highlight", rowInput === inputStr);
+      }
+    }
+
+    function logActivity(out) {
+      const inputBits = inputs.map((val, i) => `D${2 - i}=${val}`).join(" ");
+      const logEntry = `${inputBits} → ${out.map((v, i) => `I${7 - i}=${v}`).join(" ")}`;
+      const logLine = document.createElement("div");
+      logLine.textContent = logEntry;
+      logDiv.appendChild(logLine);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function drawWaveforms(currentOut) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const signals = ["D2", "D1", "D0", "I7", "I6", "I5", "I4", "I3", "I2", "I1", "I0"];
+      const colors = ["#e6194b", "#3cb44b", "#ffe119", "#000", "#000", "#000", "#000", "#000", "#000", "#000", "#000"];
+      const h = 22, w = 25, leftPad = 60;
+
+      signals.forEach((sig, i) => {
+        const yBase = i * h + 40;
+        ctx.beginPath();
+        ctx.strokeStyle = colors[i];
+        ctx.lineWidth = 2;
+        let x = leftPad;
+        let prevVal = getSignalValue(i, history[0] || [0,0,0]);
+
+        ctx.moveTo(x, yBase + (prevVal ? 0 : 10));
+
+        for (let t = 0; t < history.le

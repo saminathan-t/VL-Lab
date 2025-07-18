@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voltage Regulation - Load & Line with Zener Diodes</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #e6f2ff;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    canvas {
+      margin-top: 30px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    .diagram {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .diagram img {
+      max-width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      margin-top: 15px;
+    }
+    .controls label {
+      margin-bottom: 0;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Voltage Regulation</h1>
+    <h2>Load & Line Regulation Using Zener Diodes</h2>
+
+    <label for="regulationType">Select Regulation Type:</label>
+    <select id="regulationType">
+      <option value="load">Load Regulation</option>
+      <option value="line">Line Regulation</option>
+    </select>
+
+    <label for="regulatorType">Select Regulator Type:</label>
+    <select id="regulatorType">
+      <option value="series">Series Regulator</option>
+      <option value="shunt">Shunt Regulator</option>
+    </select>
+
+    <div id="loadInputs">
+      <label for="vinLoad">Input Voltage V<sub>in</sub> (constant):</label>
+      <input type="number" id="vinLoad" step="any">
+
+      <label for="rlValues">Load Resistance R<sub>L</sub> values (comma-separated):</label>
+      <input type="text" id="rlValues" placeholder="e.g., 10, 20, 30, 40">
+    </div>
+
+    <div id="lineInputs" style="display: none;">
+      <label for="rlConstant">Load Resistance R<sub>L</sub> (constant):</label>
+      <input type="number" id="rlConstant" step="any">
+
+      <label for="vinValues">Input Voltage V<sub>in</sub> values (comma-separated):</label>
+      <input type="text" id="vinValues" placeholder="e.g., 5, 6, 7, 8, 9, 10">
+    </div>
+
+    <div class="controls">
+      <label for="bgColor">Chart Background:</label>
+      <input type="color" id="bgColor" value="#ffffff">
+      <label for="lineColor">Line Color:</label>
+      <input type="color" id="lineColor" value="#007BFF">
+    </div>
+
+    <button onclick="plotGraph()">Plot Graph</button>
+    <button onclick="downloadChart()">Download Chart</button>
+    <button onclick="resetZoom()">Reset Zoom</button>
+
+    <canvas id="regulationChart" height="300"></canvas>
+
+    <div class="diagram" id="zenerDiagram">
+      <h3>Zener Diode Regulator Circuit</h3>
+      <img id="zenerImage" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Zener_regulator.svg/500px-Zener_regulator.svg.png" alt="Zener Regulator Diagram">
+    </div>
+  </div>
+
+  <script>
+    let chartObj;
+
+    function plotGraph() {
+      const type = document.getElementById('regulationType').value;
+      const regulator = document.getElementById('regulatorType').value;
+      const lineColor = document.getElementById('lineColor').value;
+      const bgColor = document.getElementById('bgColor').value;
+
+      const ctx = document.getElementById('regulationChart').getContext('2d');
+      document.getElementById('regulationChart').style.backgroundColor = bgColor;
+
+      let labels = [], data = [], title = "", xLabel = "", yLabel = "Output Voltage Vₗ (V)";
+
+      if (chartObj) chartObj.destroy();
+
+      if (type === 'load') {
+        const vin = parseFloat(document.getElementById('vinLoad').value);
+        const rlStr = document.getElementById('rlValues').value;
+        labels = rlStr.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x)).sort((a, b) => a - b);
+
+        if (labels.length === 0 || isNaN(vin)) {
+          alert("Please enter valid Load Regulation inputs.");
+          return;
+        }
+
+        data = labels.map(() => vin - 1);
+        title = "Load Regulation (Vₗ vs Rₗ)";
+        xLabel = "Load Resistance Rₗ (Ω)";
+      } else {
+        const vinStr = document.getElementById('vinValues').value;
+        const rl = parseFloat(document.getElementById('rlConstant').value);
+        labels = vinStr.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x)).sort((a, b) => a - b);
+
+        if (labels.length === 0 || isNaN(rl)) {
+          alert("Please enter valid Line Regulation inputs.");
+          return;
+        }
+
+        const threshold = labels[Math.floor(labels.length / 3)];
+        const regulatedVoltage = threshold - 1;
+        data = labels.map(v => v < threshold ? v : regulatedVoltage);
+        title = "Line Regulation (Vₗ vs Vᵢₙ)";
+        xLabel = "Input Voltage Vᵢₙ (V)";
+      }
+
+      chartObj = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Vout',
+            data: data,
+            borderColor: lineColor,
+            backgroundColor: lineColor + "33",
+            fill: true,
+            tension: 0.2,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: title,
+              font: { size: 18 }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: xLabel }
+            },
+            y: {
+              title: { display: true, text: yLabel },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+
+      // Switch Zener Regulator Image
+      const zenerImage = document.getElementById('zenerImage');
+      if (regulator === 'series') {
+        zenerImage.src = "series.PNG";
+        zenerImage.alt = "Series Regulator using Zener";
+      } else {
+        zenerImage.src = "shunt regulator.PNG";
+        zenerImage.alt = "Shunt Regulator using Zener";
+      }
+    }
+
+    function downloadChart() {
+      const link = document.createElement('a');
+      link.download = "voltage_regulation_chart.png";
+      link.href = document.getElementById('regulationChart').toDataURL();
+      link.click();
+    }
+
+    function resetZoom() {
+      if (chartObj) {
+        chartObj.resetZoom();
+      }
+    }
+
+    document.getElementById('regulationType').addEventListener('change', function () {
+      const type = this.value;
+      document.getElementById('loadInputs').style.display = type === 'load' ? 'block' : 'none';
+      document.getElementById('lineInputs').style.display = type === 'line' ? 'block' : 'none';
+    });
+  </script>
+</body>
+</html>
