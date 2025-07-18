@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Binary Adders: Half & Full Adder</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f8ff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1, h2 {
+      color: #004080;
+    }
+
+    .container {
+      display: inline-block;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+    }
+
+    button.active {
+      background-color: #28a745;
+    }
+
+    select {
+      margin: 8px;
+      padding: 5px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    td {
+      background-color: #e8f4ff;
+    }
+
+    .highlight {
+      background-color: #d4edda !important;
+      font-weight: bold;
+    }
+
+    .output {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+
+    #logicExpression {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    canvas {
+      margin: 20px auto;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      display: block;
+    }
+
+    #log {
+      text-align: left;
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff5e6;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 0.95em;
+      height: 150px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Binary Adders: Half & Full Adder</h1>
+
+  <div class="container">
+    <label for="adderType">Select Adder Type:</label>
+    <select id="adderType" onchange="updateAdder()">
+      <option value="half">Half Adder</option>
+      <option value="full">Full Adder</option>
+    </select>
+
+    <div>
+      <label>A:</label><button id="btnA" onclick="toggleInput('A')">0</button>
+      <label>B:</label><button id="btnB" onclick="toggleInput('B')">0</button>
+      <span id="cinInput" style="display:none;">
+        <label>Cin:</label><button id="btnCin" onclick="toggleInput('Cin')">0</button>
+      </span>
+    </div>
+
+    <div id="logicExpression"></div>
+    <table id="truthTable"></table>
+    <div class="output">
+      <p>Sum = <span id="sumOut">0</span>, Carry = <span id="carryOut">0</span></p>
+    </div>
+  </div>
+
+  <h2>Input/Output Waveform (History)</h2>
+  <canvas id="waveformCanvas" width="900" height="300"></canvas>
+  <button onclick="exportCanvas()">Export Waveform</button>
+
+  <h2>Previous Combinations</h2>
+  <div id="log"></div>
+
+  <script>
+    let A = 0, B = 0, Cin = 0;
+    let history = [];
+
+    const table = document.getElementById("truthTable");
+    const sumOut = document.getElementById("sumOut");
+    const carryOut = document.getElementById("carryOut");
+    const cinInput = document.getElementById("cinInput");
+    const logDiv = document.getElementById("log");
+    const canvas = document.getElementById("waveformCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function toggleInput(bit) {
+      if (bit === "A") A ^= 1;
+      if (bit === "B") B ^= 1;
+      if (bit === "Cin") Cin ^= 1;
+      updateButtonStates();
+      updateOutput();
+    }
+
+    function updateButtonStates() {
+      document.getElementById("btnA").textContent = A;
+      document.getElementById("btnB").textContent = B;
+      document.getElementById("btnCin").textContent = Cin;
+
+      document.getElementById("btnA").classList.toggle("active", A);
+      document.getElementById("btnB").classList.toggle("active", B);
+      document.getElementById("btnCin").classList.toggle("active", Cin);
+    }
+
+    function updateAdder() {
+      const adder = document.getElementById("adderType").value;
+      cinInput.style.display = adder === "full" ? "inline-block" : "none";
+      document.getElementById("logicExpression").innerHTML =
+        adder === "half"
+          ? "Half Adder: Sum = A ⊕ B, Carry = A · B"
+          : "Full Adder: Sum = A ⊕ B ⊕ Cin, Carry = AB + BCin + ACin";
+      generateTable();
+      updateButtonStates();
+      history = [];
+      updateOutput();
+    }
+
+    function generateTable() {
+      const adder = document.getElementById("adderType").value;
+      let html = "";
+
+      if (adder === "half") {
+        html = `<tr><th>A</th><th>B</th><th>Sum</th><th>Carry</th></tr>`;
+        for (let A = 0; A <= 1; A++) {
+          for (let B = 0; B <= 1; B++) {
+            let Sum = A ^ B;
+            let Carry = A & B;
+            html += `<tr><td>${A}</td><td>${B}</td><td>${Sum}</td><td>${Carry}</td></tr>`;
+          }
+        }
+      } else {
+        html = `<tr><th>A</th><th>B</th><th>Cin</th><th>Sum</th><th>Carry</th></tr>`;
+        for (let A = 0; A <= 1; A++) {
+          for (let B = 0; B <= 1; B++) {
+            for (let Cin = 0; Cin <= 1; Cin++) {
+              let Sum = A ^ B ^ Cin;
+              let Carry = (A & B) | (B & Cin) | (A & Cin);
+              html += `<tr><td>${A}</td><td>${B}</td><td>${Cin}</td><td>${Sum}</td><td>${Carry}</td></tr>`;
+            }
+          }
+        }
+      }
+
+      table.innerHTML = html;
+    }
+
+    function updateOutput() {
+      const adder = document.getElementById("adderType").value;
+      let Sum = 0, Carry = 0;
+
+      if (adder === "half") {
+        Sum = A ^ B;
+        Carry = A & B;
+      } else {
+        Sum = A ^ B ^ Cin;
+        Carry = (A & B) | (B & Cin) | (A & Cin);
+      }
+
+      sumOut.innerText = Sum;
+      carryOut.innerText = Carry;
+
+      highlightRow(A, B, Cin);
+
+      history.push({ A, B, Cin, Sum, Carry, adder });
+      drawWaveforms();
+      addToLog(A, B, Cin, Sum, Carry, adder);
+    }
+
+    function highlightRow(A, B, Cin) {
+      for (let i = 1; i < table.rows.length; i++) {
+        const row = table.rows[i];
+        row.classList.remove("highlight");
+
+        const cells = row.cells;
+        if (cells[0].innerText == A && cells[1].innerText == B) {
+          if (cells.length === 4 || (cells.length === 5 && cells[2].innerText == Cin)) {
+            row.classList.add("highlight");
+          }
+        }
+      }
+    }
+
+    function drawWaveforms() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const adder = history[0]?.adder || "half";
+
+      const signals = adder === "half"
+        ? ["A", "B", "Sum", "Carry"]
+        : ["A", "B", "Cin", "Sum", "Carry"];
+
+      const colors = ["#ff0000", "#007bff", "#28a745", "#ff9900", "#800080"];
+      const h = 40, w = 30;
+      const leftPad = 60;
+
+      signals.forEach((sig, i) => {
+        const yBase = i * h + 40;
+        let prevVal = history[0]?.[sig] || 0;
+        let x = leftPad;
+
+        ctx.beginPath();
+        ctx.strokeStyle = colors[i];
+        ctx.lineWidth = 2;
+        ctx.moveTo(x, yBase + (prevVal ? 0 : 20));
+
+        for (let t = 0; t < history.length; t++) {
+          const val = history[t][sig];
+          const y = yBase + (val ? 0 : 20);
+
+          if (val !== prevVal) {
+            ctx.lineTo(x, yBase + (prevVal ? 0 : 20)); // step up/down
+            ctx.lineTo(x, y); // vertical jump
+          }
+          ctx.lineTo(x + w, y); // horizontal level
+
+          x += w;
+          prevVal = val;
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = "#000";
+        ctx.fillText(sig, 10, yBase + 15);
+      });
+
+      // Grid
+      for (let t = 0; t <= history.length; t++) {
+        let x = t * w + leftPad;
+        ctx.beginPath();
+        ctx.moveTo(x, 20);
+        ctx.lineTo(x, signals.length * h + 20);
+        ctx.strokeStyle = "#eee";
+        ctx.stroke();
+      }
+    }
+
+    function addToLog(A, B, Cin, Sum, Carry, adder) {
+      const logEntry = adder === 'half'
+        ? `A=${A}, B=${B} => Sum=${Sum}, Carry=${Carry}`
+        : `A=${A}, B=${B}, Cin=${Cin} => Sum=${Sum}, Carry=${Carry}`;
+      const logLine = document.createElement("div");
+      logLine.textContent = logEntry;
+      logDiv.appendChild(logLine);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function exportCanvas() {
+      const link = document.createElement("a");
+      link.download = "waveform.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+
+    window.onload = () => {
+      updateAdder();
+    };
+  </script>
+</body>
+</html>
